@@ -1,0 +1,4 @@
+grades
+grades.exe
+*.o
+__pycache__/

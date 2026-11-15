@@ -1,9 +1,38 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <sstream>
+#include <limits>
+#include <cmath>
+#include <stdexcept>
 using namespace std;
 
 const int MAX_STUDENTS = 30;
+
+string readText(const string& prompt) {
+    string line;
+    while (true) {
+        cout << prompt;
+        if (!getline(cin, line)) throw runtime_error("Input ended. Goodbye!");
+        const size_t first = line.find_first_not_of(" \t\r");
+        if (first != string::npos)
+            return line.substr(first, line.find_last_not_of(" \t\r") - first + 1);
+        cout << "Please enter a nonempty value.\n";
+    }
+}
+
+template <typename T>
+T readNumber(const string& prompt, T minimum, T maximum) {
+    while (true) {
+        string line = readText(prompt);
+        istringstream input(line);
+        T value;
+        char extra;
+        if ((input >> value) && !(input >> extra) && isfinite(static_cast<double>(value))
+            && value >= minimum && value <= maximum) return value;
+        cout << "Invalid input. Enter a number from " << minimum << " to " << maximum << ".\n";
+    }
+}
 
 char assignGrade(float total) {
     if (total >= 80) return 'A';
@@ -32,47 +61,30 @@ void inputStudents(string* names, int* ids, float* quiz,
         int idx = *count;
         cout << "\n--- Student " << (idx + 1) << " ---\n";
 
-        cout << "Enter Name     : ";
-        cin.ignore();
-        getline(cin, names[idx]);
-
-        // Validate student ID (must be a positive integer)
-        cout << "Enter Student ID : ";
-        while (!(cin >> ids[idx]) || ids[idx] <= 0) {
-            cin.clear();
-            cin.ignore(1000, '\n');
-            cout << "Invalid ID. Please enter a positive integer: ";
+        names[idx] = readText("Enter Name: ");
+        while (true) {
+            ids[idx] = readNumber<int>("Enter Student ID: ", 1, numeric_limits<int>::max());
+            bool duplicate = false;
+            for (int i = 0; i < idx; ++i) {
+                if (ids[i] == ids[idx]) duplicate = true;
+            }
+            if (!duplicate) break;
+            cout << "That student ID already exists. Use a unique ID.\n";
         }
-
-        // Validate quiz score (0 – 20)
-        do {
-            cout << "Enter Quiz Score    (0 - 20) : ";
-            cin >> quiz[idx];
-            if (quiz[idx] < 0 || quiz[idx] > 20)
-                cout << "  Invalid! Score must be between 0 and 20.\n";
-        } while (quiz[idx] < 0 || quiz[idx] > 20);
-
-        // Validate mid-semester score (0 – 30)
-        do {
-            cout << "Enter Mid-Sem Score (0–30) : ";
-            cin >> midSem[idx];
-            if (midSem[idx] < 0 || midSem[idx] > 30)
-                cout << "  Invalid! Score must be between 0 and 30.\n";
-        } while (midSem[idx] < 0 || midSem[idx] > 30);
-
-        // Validate exam score (0 – 50)
-        do {
-            cout << "Enter Exam Score    (0–50) : ";
-            cin >> exam[idx];
-            if (exam[idx] < 0 || exam[idx] > 50)
-                cout << "  Invalid! Score must be between 0 and 50.\n";
-        } while (exam[idx] < 0 || exam[idx] > 50);
+        quiz[idx] = readNumber<float>("Enter Quiz Score (0 - 20): ", 0, 20);
+        midSem[idx] = readNumber<float>("Enter Mid-Sem Score (0 - 30): ", 0, 30);
+        exam[idx] = readNumber<float>("Enter Exam Score (0 - 50): ", 0, 50);
 
         (*count)++;
 
         if (*count < MAX_STUDENTS) {
-            cout << "\nAdd another student? (y/n) : ";
-            cin >> addMore;
+            string answer;
+            do {
+                answer = readText("Add another student? (y/n): ");
+                if (answer != "y" && answer != "Y" && answer != "n" && answer != "N")
+                    cout << "Choose y or n.\n";
+            } while (answer != "y" && answer != "Y" && answer != "n" && answer != "N");
+            addMore = answer[0];
         }
 
     } while ((addMore == 'y' || addMore == 'Y') && *count < MAX_STUDENTS);
@@ -116,7 +128,7 @@ void displayReport(string* names, int* ids, float* totals,
     for (int i = 0; i < count; i++) {
         cout << left
              << setw(10) << *(ids     + i)
-             << setw(22) << *(names   + i)
+             << setw(22) << (names[i].size() > 20 ? names[i].substr(0, 17) + "..." : names[i])
              << setw(8)  << fixed << setprecision(1) << *(totals + i)
              << setw(7)  << *(grades  + i)
              << setw(7)  << *(remarks + i)
@@ -194,7 +206,7 @@ void displayMenu() {
     cout << "Enter your choice: ";
 }
 
-int main() {
+int run() {
     // --- Parallel arrays for student data ---
     string names[MAX_STUDENTS];
     int    ids[MAX_STUDENTS];
@@ -212,16 +224,15 @@ int main() {
     do {
         displayMenu();
 
-        // Validate menu choice
-        while (!(cin >> choice) || choice < 1 || choice > 6) {
-            cin.clear();
-            cin.ignore(1000, '\n');
-            cout << "Invalid input. Please enter a number (1-6): ";
-        }
+        choice = readNumber<int>("", 1, 6);
 
         switch (choice) {
 
             case 1:
+                if (studentCount > 0) {
+                    string confirm = readText("Replace all current records? (y/n): ");
+                    if (confirm != "y" && confirm != "Y") break;
+                }
                 inputStudents(names, ids, quiz, midSem, exam,
                               &studentCount);
                 gradesComputed = false;   // Reset flag on new input
@@ -276,8 +287,7 @@ int main() {
                     gradesComputed = true;
                 }
                 int searchID;
-                cout << "\nEnter Student ID to search: ";
-                cin >> searchID;
+                searchID = readNumber<int>("Enter Student ID to search: ", 1, numeric_limits<int>::max());
 
                 int idx = searchByID(ids, studentCount, searchID);
 
@@ -308,4 +318,13 @@ int main() {
     } while (choice != 6);
 
     return 0;
+}
+
+int main() {
+    try {
+        return run();
+    } catch (const runtime_error& error) {
+        cout << "\n" << error.what() << "\n";
+        return 0;
+    }
 }
