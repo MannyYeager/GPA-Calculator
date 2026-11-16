@@ -2,3 +2,6 @@ grades
 grades.exe
 *.o
 __pycache__/
+grade_engine
+grade_engine.exe
+grades_test.exe

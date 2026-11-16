@@ -5,6 +5,7 @@
 #include <limits>
 #include <cmath>
 #include <stdexcept>
+#include "grade_rules.h"
 using namespace std;
 
 const int MAX_STUDENTS = 30;
@@ -32,14 +33,6 @@ T readNumber(const string& prompt, T minimum, T maximum) {
             && value >= minimum && value <= maximum) return value;
         cout << "Invalid input. Enter a number from " << minimum << " to " << maximum << ".\n";
     }
-}
-
-char assignGrade(float total) {
-    if (total >= 80) return 'A';
-    else if (total >= 70) return 'B';
-    else if (total >= 60) return 'C';
-    else if (total >= 50) return 'D';
-    else return 'F';
 }
 
 void inputStudents(string* names, int* ids, float* quiz,
@@ -97,7 +90,7 @@ void computeGrades(float* quiz, float* midSem, float* exam,
                    int count) {
     // Use pointer arithmetic to traverse all arrays
     for (int i = 0; i < count; i++) {
-        *(totals + i) = *(quiz + i) + *(midSem + i) + *(exam + i);
+        *(totals + i) = assessmentTotal(*(quiz + i), *(midSem + i), *(exam + i));
         *(grades + i) = assignGrade(*(totals + i));
         *(remarks + i) = (*(grades + i) == 'F') ? "Fail" : "Pass";
     }

@@ -9,4 +9,4 @@ jobs:
         with:
           python-version: '3.11'
       - run: g++ -std=c++11 -Wall -Wextra -pedantic main.cpp -o grades
-      - run: python test_cli.py -v
+      - run: python -m unittest -v

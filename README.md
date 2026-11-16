@@ -1,10 +1,26 @@
 # Student Grade Management System
 
-A C++ terminal program for recording a class's assessment scores, assigning letter grades, and reviewing class performance. It keeps the original parallel-array and pointer-based design as a practical exercise in functions, input validation, and basic statistics.
+A student grade manager with a working web interface and the original C++ terminal program. Record assessment scores, assign letter grades, and review class performance. Both interfaces share the C++ rules in `grade_rules.h`; the web app calls a compiled C++ engine for totals, grades, and statistics.
 
 The repository retains its original name, **GPA-Calculator**, but the current program calculates **assessment totals and letter grades**, not credit-weighted GPA. There are no course credits or grade-point scales.
 
-## Build and run
+## Open the web app
+
+Requires **Python 3.11+** and a C++11 compiler (`g++` or `clang++`) available on PATH. No Python packages, frontend build, API keys, or database are needed.
+
+```sh
+git clone https://github.com/MannyYeager/GPA-Calculator.git
+cd GPA-Calculator
+python web.py
+```
+
+Open **http://127.0.0.1:8767/**. The launcher builds `grade_engine` (`grade_engine.exe` on Windows) if it is missing or its source changed. Use `--port 8772` if the default port is occupied.
+
+Choose **Load sample class** to explore three fictional students. Add or edit scores through **Add student** and the row's **Edit** button. Totals, grade distribution, class average, highest/lowest scores, and pass rate update from the C++ engine after each change. Search by name/ID, filter Pass or Fail, and use **Export CSV** for a class report. Removal and replacement of the current class require confirmation.
+
+Each browser session has its own class of up to 30 students. Refreshes retain the cookie session for up to eight hours; restarting the server discards all classes. The server is bound to loopback only. It does not share records with an independently running terminal process and is intended for local demonstrations.
+
+## Build and run the original terminal app
 
 Requires a C++11-compatible compiler, such as GCC/MinGW or Clang. No external libraries are needed.
 
@@ -84,9 +100,18 @@ Choose `5` and enter `101` to inspect Ama's full record. Choose `6` to exit.
 After compiling as above, run the terminal regression suite with **Python 3.11+**:
 
 ```sh
-python test_cli.py -v
+python -m unittest -v
 ```
 
-Python is used only for tests, not for the application. Tests exercise full reports/search/statistics, grade boundaries, invalid numeric input, duplicate IDs, capacity, record replacement, and EOF.
+The terminal executable does not need Python. Python supplies the optional web server and tests; grading remains in C++. Tests exercise full terminal reports/search/statistics, grade boundaries, invalid input, duplicates, capacity, record replacement, EOF, the C++ web protocol, web CRUD, per-browser session isolation, and CSV export.
+
+| File | Purpose |
+| --- | --- |
+| `main.cpp` | Original pointer/parallel-array terminal program |
+| `grade_rules.h` | Shared assessment total and letter-grade rules |
+| `grade_engine.cpp` | Numeric stdin/JSON stdout bridge for the browser app |
+| `web.py`, `local_web.py` | Python web adapter and loopback server |
+| `static/` | Interactive classroom dashboard and student forms |
+| `test_cli.py`, `test_web.py` | Terminal, C++ engine, and HTTP tests |
 
 Records are discarded when the application exits. There is no file storage, course management, or GPA calculation. Long names are shortened in the class table to preserve alignment; the search view shows the full name.

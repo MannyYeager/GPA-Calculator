@@ -1,10 +1,11 @@
 """Compile main.cpp first, then run: python test_cli.py"""
 from pathlib import Path
 import subprocess
+import os
 import unittest
 
 ROOT = Path(__file__).parent
-APP = ROOT / ("grades.exe" if (ROOT / "grades.exe").exists() else "grades")
+APP = Path(os.environ.get('GRADE_APP', str(ROOT / ("grades.exe" if (ROOT / "grades.exe").exists() else "grades"))))
 
 
 def run_program(text):
