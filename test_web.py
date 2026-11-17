@@ -39,6 +39,14 @@ class GradeWebTests(unittest.TestCase):
     def session(self):
         return self.request()[1]['Set-Cookie'].split(';')[0]
 
+    def test_offline_interface_assets_and_boundaries(self):
+        for path in ['/', '/app.js', '/ui.js', '/ui.css', '/theme.css', '/vendor/anime.umd.min.js']:
+            status, headers, body = self.request(path)
+            self.assertEqual(status, 200)
+            self.assertGreater(len(body), 100)
+            self.assertIn("script-src 'self'", headers['Content-Security-Policy'])
+        self.assertEqual(self.request('/vendor/../../web.py')[0], 404)
+
     def test_sample_class_is_calculated_by_cpp_and_exported(self):
         cookie = self.session()
         status, _, result = self.request('/api/sample', {}, cookie)

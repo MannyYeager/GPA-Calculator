@@ -115,3 +115,10 @@ The terminal executable does not need Python. Python supplies the optional web s
 | `test_cli.py`, `test_web.py` | Terminal, C++ engine, and HTTP tests |
 
 Records are discarded when the application exits. There is no file storage, course management, or GPA calculation. Long names are shortened in the class table to preserve alignment; the search view shows the full name.
+
+### Visual design and animation
+
+The browser app includes a distinct colour palette, custom stroke SVG icons, richer dashboards, and Anime.js entrances and action feedback. Animation respects `prefers-reduced-motion`, including changes while the page is open. Forms and data updates do not depend on animation completing.
+
+Anime.js **4.5.0** is vendored at `static/vendor/anime.umd.min.js` from the official npm distribution, with its MIT license in `static/vendor/ANIME-LICENSE.md`. No CDN, build step, or internet connection is needed at runtime. `static/ui.js` and `static/ui.css` provide the shared icon and motion layer; `static/theme.css` contains this app’s visual theme. See [Anime.js installation](https://animejs.com/documentation/getting-started/installation/).
+`node test_motion.cjs` checks the motion preference and missing-runtime fallbacks (Node.js is needed only for this optional check).

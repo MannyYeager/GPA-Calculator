@@ -1,0 +1,21 @@
+/* Shared vector icons and interaction polish. All movement is optional. */
+.ui-icon{width:1.15em;height:1.15em;display:inline-block;vertical-align:-.2em;flex-shrink:0;pointer-events:none}
+button>.ui-icon,a>.ui-icon{margin-inline:3px}
+.small-star .ui-icon,.orbit-icon .ui-icon,.graph-star .ui-icon,.sidebar-card>span>.ui-icon{width:36px;height:36px}
+.summary-icon>.ui-icon,.wallet-glyph>.ui-icon{width:26px;height:26px}
+.search .ui-icon{width:20px;height:20px}
+.entry-book>span>.ui-icon{width:1em;height:1em}
+.feature-ribbon{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:26px 0}
+.feature-ribbon>div{display:flex;align-items:center;gap:12px;padding:15px 17px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.feature-ribbon .feature-icon{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:11px;background:var(--icon-bg,#eeeaff);color:var(--accent,#6544df)}
+.feature-ribbon strong{display:block;font-size:12px;font-weight:650}
+.feature-ribbon small{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+.section-index{display:inline-flex;align-items:center;gap:8px;font-size:10px;font-weight:700;letter-spacing:1.5px}
+.section-index::before{content:'';width:22px;height:2px;background:currentColor}
+.primary,.secondary,.borrow-button,.entry-submit,.entry-demo-actions button{transition:background .2s,box-shadow .2s,border-color .2s}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--accent,#6544df);outline-offset:4px}
+.primary:hover,.entry-submit:hover{box-shadow:0 6px 0 #00000015}
+dialog{box-shadow:0 30px 100px #16102d40}
+dialog::backdrop{background:#100c2680;backdrop-filter:blur(5px)}
+@media(max-width:700px){.feature-ribbon{grid-template-columns:1fr;margin:20px 0;gap:8px}.feature-ribbon>div{padding:11px 14px}.feature-ribbon strong{font-size:12px}.feature-ribbon small{font-size:11px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}

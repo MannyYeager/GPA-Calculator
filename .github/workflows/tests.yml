@@ -10,3 +10,8 @@ jobs:
           python-version: '3.11'
       - run: g++ -std=c++11 -Wall -Wextra -pedantic main.cpp -o grades
       - run: python -m unittest -v
+      - name: Check browser scripts and motion fallbacks
+        run: |
+          node --check static/app.js
+          node --check static/ui.js
+          node test_motion.cjs

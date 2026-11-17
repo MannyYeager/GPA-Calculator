@@ -12,7 +12,7 @@ async function api(path,data) {
 }
 
 function toast(message,error = false) {
-  clearTimeout(timer); $('#toast').textContent = message; $('#toast').className = error ? 'error' : ''; $('#toast').hidden = false;
+  clearTimeout(timer); $('#toast').textContent = message; $('#toast').className = error ? 'error' : ''; $('#toast').hidden = false; AppUI.feedback('#toast');
   timer = setTimeout(() => { $('#toast').hidden = true; },7000);
 }
 
@@ -55,14 +55,14 @@ function openStudent(record) {
   $('#save-student').textContent = record ? 'Save changes ↗' : 'Save student ↗';
   form.elements.original_id.value = record ? String(record.id) : '';
   if (record) ['name','id','quiz','mid','exam'].forEach(key => { form.elements[key].value = record[key]; });
-  $('#student-dialog').showModal();
+  $('#student-dialog').showModal(); AppUI.reveal('#student-dialog .identity-fields,#student-dialog .score-fields');
 }
 
 async function action(path,data,button) {
   if (busy) return false;
   busy = true; if (button) button.disabled = true; $('#form-error').textContent = '';
   try {
-    const result = await api(path,data); state = result.state; render(); toast(result.message); return true;
+    const result = await api(path,data); state = result.state; render(); AppUI.feedback('.summary-card'); AppUI.reveal('#records tbody tr'); toast(result.message); return true;
   } catch (error) {
     if ($('#student-dialog').open) $('#form-error').textContent = error.message;
     else toast(error.message,true);

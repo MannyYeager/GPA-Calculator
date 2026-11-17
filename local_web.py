@@ -73,9 +73,11 @@ class Handler(BaseHTTPRequestHandler):
                 return
             path = urlsplit(self.path).path
             try:
-                if path in {"/", "/app.js", "/style.css"}:
+                if path in {"/", "/app.js", "/style.css", "/ui.js", "/ui.css", "/theme.css", "/vendor/anime.umd.min.js"}:
                     name, mime = {"/": ("index.html", "text/html"), "/app.js": ("app.js", "text/javascript"),
-                                  "/style.css": ("style.css", "text/css")}[path]
+                                  "/style.css": ("style.css", "text/css"), "/ui.js": ("ui.js", "text/javascript"),
+                                  "/ui.css": ("ui.css", "text/css"), "/theme.css": ("theme.css", "text/css"),
+                                  "/vendor/anime.umd.min.js": ("vendor/anime.umd.min.js", "text/javascript")}[path]
                     self.reply(200, (self.server.static_dir / name).read_bytes(), mime + "; charset=utf-8")
                 elif path in {"/api/state", "/api/export"}:
                     data, cookie = self.session()
