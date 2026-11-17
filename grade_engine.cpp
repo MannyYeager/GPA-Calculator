@@ -8,7 +8,7 @@
 #include <cmath>
 #include "grade_rules.h"
 
-struct ScoreRow { int id; float quiz, mid, exam, total; char grade; };
+struct ScoreRow { int id; double quiz, mid, exam, total; char grade; };
 
 int main() {
     std::vector<ScoreRow> rows;
@@ -18,19 +18,36 @@ int main() {
         std::istringstream input(line);
         ScoreRow row;
         char extra;
-        if (rows.size() >= 30 || !(input >> row.id >> row.quiz >> row.mid >> row.exam)
+        bool weighted = !line.empty() && line[0] == 'W';
+        if (weighted) {
+            char marker; int count;
+            double weights = 0, total = 0;
+            if (!(input >> marker >> row.id >> count) || count < 1 || count > 8) return 1;
+            for (int i = 0; i < count; ++i) {
+                double score, maximum, weight;
+                if (!(input >> score >> maximum >> weight) || !std::isfinite(score)
+                    || !std::isfinite(maximum) || !std::isfinite(weight) || maximum <= 0
+                    || maximum > 1000000 || score < 0 || score > maximum || weight <= 0 || weight > 100) return 1;
+                weights += weight;
+                total += score / maximum * weight;
+            }
+            if (std::abs(weights - 100) > 0.000001) return 1;
+            // Remove arithmetic noise at grade boundaries, without rounding to display precision.
+            row.total = std::round(total * 100000000.0) / 100000000.0;
+        } else if (!(input >> row.id >> row.quiz >> row.mid >> row.exam)) return 1;
+        if (rows.size() >= 30
             || (input >> extra) || row.id <= 0 || !ids.insert(row.id).second
-            || !std::isfinite(row.quiz) || !std::isfinite(row.mid) || !std::isfinite(row.exam)
+            || (!weighted && (!std::isfinite(row.quiz) || !std::isfinite(row.mid) || !std::isfinite(row.exam)
             || row.quiz < 0 || row.quiz > 20 || row.mid < 0 || row.mid > 30
-            || row.exam < 0 || row.exam > 50) {
+            || row.exam < 0 || row.exam > 50))) {
             std::cerr << "Invalid assessment record.\n";
             return 1;
         }
-        row.total = assessmentTotal(row.quiz, row.mid, row.exam);
+        if (!weighted) row.total = assessmentTotal(row.quiz, row.mid, row.exam);
         row.grade = assignGrade(row.total);
         rows.push_back(row);
     }
-    float sum = 0;
+    double sum = 0;
     int passed = 0;
     std::size_t high = 0, low = 0;
     std::cout << std::setprecision(9) << "{\"records\":[";

@@ -40,7 +40,7 @@ class GradeWebTests(unittest.TestCase):
         return self.request()[1]['Set-Cookie'].split(';')[0]
 
     def test_offline_interface_assets_and_boundaries(self):
-        for path in ['/', '/app.js', '/ui.js', '/ui.css', '/theme.css', '/vendor/anime.umd.min.js']:
+        for path in ['/', '/app.js', '/ui.js', '/ui.css', '/theme.css', '/workspace.css', '/vendor/anime.umd.min.js']:
             status, headers, body = self.request(path)
             self.assertEqual(status, 200)
             self.assertGreater(len(body), 100)

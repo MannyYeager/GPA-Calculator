@@ -1,124 +1,68 @@
-# Student Grade Management System
+# Grade Room — subject-based student assessment management
 
-A student grade manager with a working web interface and the original C++ terminal program. Record assessment scores, assign letter grades, and review class performance. Both interfaces share the C++ rules in `grade_rules.h`; the web app calls a compiled C++ engine for totals, grades, and statistics.
+A local teacher workspace with separate **Overview**, **Students**, **Subjects**, **Gradebook** and **Class insights** sections. Teachers define the assessment structure for each subject. A shared C++ engine calculates the saved weighted totals and letter grades.
 
-The repository retains its original name, **GPA-Calculator**, but the current program calculates **assessment totals and letter grades**, not credit-weighted GPA. There are no course credits or grade-point scales.
+## Run
 
-## Open the web app
-
-Requires **Python 3.11+** and a C++11 compiler (`g++` or `clang++`) available on PATH. No Python packages, frontend build, API keys, or database are needed.
+Requires Python 3.10+ and a C++11 compiler (`g++` or `clang++`) on PATH.
 
 ```sh
-git clone https://github.com/MannyYeager/GPA-Calculator.git
-cd GPA-Calculator
 python web.py
 ```
 
-Open **http://127.0.0.1:8767/**. The launcher builds `grade_engine` (`grade_engine.exe` on Windows) if it is missing or its source changed. Use `--port 8772` if the default port is occupied.
+Open http://127.0.0.1:8767/ . The launcher compiles `grade_engine` (`grade_engine.exe` on Windows) when missing or stale. Use `--port 8772` for another loopback port. No Python packages or frontend build are needed.
 
-Choose **Load sample class** to explore three fictional students. Add or edit scores through **Add student** and the row's **Edit** button. Totals, grade distribution, class average, highest/lowest scores, and pass rate update from the C++ engine after each change. Search by name/ID, filter Pass or Fail, and use **Export CSV** for a class report. Removal and replacement of the current class require confirmation.
+## A complete teaching workflow
 
-Each browser session has its own class of up to 30 students. Refreshes retain the cookie session for up to eight hours; restarting the server discards all classes. The server is bound to loopback only. It does not share records with an independently running terminal process and is intended for local demonstrations.
+1. Open **Subjects** and add a subject name/code. Add one to eight assessment components, each with a name, raw maximum mark and percentage weight. Weights must total exactly 100% for that subject.
+2. Open **Students** and create a learner using name, unique positive ID and optional class/group. The next step opens subject assessment entry. The roster supports up to 30 students and the workspace up to 12 subjects.
+3. Open **Gradebook**, choose a subject and enter marks. A test scored out of 50 can contribute 20%, independently of its raw maximum. Every learner has separate marks per subject.
+4. Review weighted totals, letter grades, filters, subject averages/pass rates, assessment coverage and distributions in **Class insights**. Missing assessments remain ungraded and are excluded from averages and pass/fail counts.
+5. Export all subjects and their raw marks, maxima, weights and final results to CSV.
 
-## Build and run the original terminal app
+Example: Quiz 40/50 at 20% + Mid-semester 80/100 at 30% + Exam 80/100 at 50% gives 16 + 24 + 40 = **80/100, A**.
 
-Requires a C++11-compatible compiler, such as GCC/MinGW or Clang. No external libraries are needed.
+The default General assessment starts with Quiz /20 at 20%, Mid-semester /30 at 30% and Exam /50 at 50%. It is editable like other subjects. Quick templates provide either three assessments or Coursework 40% / Exam 60%; teachers can change the allocations and add assessments such as projects or practical work.
 
-### Windows with MinGW
+Editing weights recalculates existing completed results. Lowering a maximum below an existing mark is rejected. Adding a component makes previous records ungraded until its mark is entered. Removing a subject requires confirmation, removes that subject's marks and leaves the roster intact. At least one subject is retained.
 
-```powershell
-git clone https://github.com/MannyYeager/GPA-Calculator.git
-cd GPA-Calculator
-g++ -std=c++11 -Wall -Wextra -pedantic main.cpp -o grades.exe
-.\grades.exe
-```
+## Grade thresholds
 
-### Linux or macOS
+| Total | Grade |
+| --- | --- |
+| 80–100 | A |
+| 70–<80 | B |
+| 60–<70 | C |
+| 50–<60 | D |
+| <50 | F |
+
+A–D are passing. These thresholds stay consistent across subjects. The app calculates assessment grades, not credit-weighted GPA.
+
+## Original terminal app
+
+The pointer/parallel-array terminal program remains available with its original Quiz /20 + Mid-semester /30 + Exam /50 model.
 
 ```sh
-git clone https://github.com/MannyYeager/GPA-Calculator.git
-cd GPA-Calculator
 g++ -std=c++11 -Wall -Wextra -pedantic main.cpp -o grades
 ./grades
 ```
 
-Use `clang++` in place of `g++` if that is your installed compiler.
-
-## What it does
-
-- Stores up to **30 student records** in memory.
-- Accepts full names and unique positive integer student IDs.
-- Validates numeric input, rejects trailing text and out-of-range scores, and handles EOF cleanly.
-- Computes total marks, letter grades, and pass/fail remarks.
-- Displays a class report, highest/lowest score, average, and pass/fail counts.
-- Searches for a student by ID; computes grades automatically when required.
-- Confirms before replacing an existing class's records.
-
-### Assessment model
-
-| Component | Allowed score |
-| --- | ---: |
-| Quiz | 0–20 |
-| Mid-semester | 0–30 |
-| Exam | 0–50 |
-| Total | 0–100 |
-
-| Total | Grade | Remark |
-| --- | --- | --- |
-| 80–100 | A | Pass |
-| 70–less than 80 | B | Pass |
-| 60–less than 70 | C | Pass |
-| 50–less than 60 | D | Pass |
-| Less than 50 | F | Fail |
-
-These are the project's existing grading rules, not a claim about a particular institution's policy. Decimal assessment scores are supported.
-
-## Demonstration
-
-Choose `1` to enter records:
-
-```text
-Name: Ama Mensah    ID: 101    Quiz: 18    Mid-Sem: 25    Exam: 42
-Name: Kojo Owusu    ID: 102    Quiz: 10    Mid-Sem: 10    Exam: 20
-```
-
-Answer `y` to add the second student, then `n`. Choose `3` for the report or `4` for statistics:
-
-```text
-Ama Mensah: 85.0 / 100, A, Pass
-Kojo Owusu: 40.0 / 100, F, Fail
-Highest Score: 85.0
-Lowest Score: 40.0
-Class Average: 62.5
-Students Passed: 1    Failed: 1
-```
-
-Choose `5` and enter `101` to inspect Ama's full record. Choose `6` to exit.
+On Windows, build with `-o grades.exe` and run `./grades.exe`. Both the terminal program and the weighted web engine share the letter-grade rules in `grade_rules.h`. The engine supports both legacy numeric rows and validated weighted assessment rows.
 
 ## Verify
 
-After compiling as above, run the terminal regression suite with **Python 3.11+**:
-
 ```sh
+g++ -std=c++11 -Wall -Wextra -pedantic main.cpp -o grades
 python -m unittest -v
+node --check static/app.js
+node --check static/ui.js
+node test_motion.cjs
 ```
 
-The terminal executable does not need Python. Python supplies the optional web server and tests; grading remains in C++. Tests exercise full terminal reports/search/statistics, grade boundaries, invalid input, duplicates, capacity, record replacement, EOF, the C++ web protocol, web CRUD, per-browser session isolation, and CSV export.
+`GRADE_APP` can select an alternate terminal executable for CLI tests. Tests cover existing terminal behavior, C++ protocol boundaries, subject weights, independent raw maxima, missing marks, edits/recalculation, validation before mutation, student edits preserving assessments, deletion, CSV, isolated sessions and local HTTP/file boundaries.
 
-| File | Purpose |
-| --- | --- |
-| `main.cpp` | Original pointer/parallel-array terminal program |
-| `grade_rules.h` | Shared assessment total and letter-grade rules |
-| `grade_engine.cpp` | Numeric stdin/JSON stdout bridge for the browser app |
-| `web.py`, `local_web.py` | Python web adapter and loopback server |
-| `static/` | Interactive classroom dashboard and student forms |
-| `test_cli.py`, `test_web.py` | Terminal, C++ engine, and HTTP tests |
+## Runtime and limits
 
-Records are discarded when the application exits. There is no file storage, course management, or GPA calculation. Long names are shortened in the class table to preserve alignment; the search view shows the full name.
+Each browser has a separate in-memory class. Sessions expire after eight hours and restart resets the class. The server binds to loopback, validates Host/Origin and serves an explicit local asset whitelist. It is a portfolio teaching tool, without hosted accounts or durable class storage.
 
-### Visual design and animation
-
-The browser app includes a distinct colour palette, custom stroke SVG icons, richer dashboards, and Anime.js entrances and action feedback. Animation respects `prefers-reduced-motion`, including changes while the page is open. Forms and data updates do not depend on animation completing.
-
-Anime.js **4.5.0** is vendored at `static/vendor/anime.umd.min.js` from the official npm distribution, with its MIT license in `static/vendor/ANIME-LICENSE.md`. No CDN, build step, or internet connection is needed at runtime. `static/ui.js` and `static/ui.css` provide the shared icon and motion layer; `static/theme.css` contains this app’s visual theme. See [Anime.js installation](https://animejs.com/documentation/getting-started/installation/).
-`node test_motion.cjs` checks the motion preference and missing-runtime fallbacks (Node.js is needed only for this optional check).
+The UI includes custom SVG icons and a vendored Anime.js 4.5.0 runtime with its MIT license. Motion is optional and respects reduced-motion settings. Fonts, icons and animations load locally; no CDN is required.

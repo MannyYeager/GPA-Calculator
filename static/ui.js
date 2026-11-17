@@ -2,6 +2,11 @@
 (() => {
   'use strict';
   const paths = {
+    heart:'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z',
+    calendar:'M4 5h16v16H4zM8 3v4m8-4v4M4 10h16M8 14h2m4 0h2m-8 4h2',
+    card:'M3 5h18v14H3zM3 10h18M6 15h4',
+    bank:'m3 9 9-6 9 6H3Zm2 3v7m7-7v7m7-7v7M2 22h20',
+    phone:'M6 2h12v20H6zM10 18h4M6 6h12',
     grid:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
     book:'M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Zm0 0v15',
     books:'M3 4h4v16H3zM10 4h4v16h-4zM16 5l4-1 3 15-4 1z',

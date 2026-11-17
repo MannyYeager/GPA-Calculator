@@ -8,8 +8,10 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+from copy import deepcopy
 
 from local_web import LocalServer
+from gradebook import ensure_data, subject_snapshot, book_action, default_subject
 
 ROOT = Path(__file__).resolve().parent
 ENGINE = ROOT / ("grade_engine.exe" if os.name == "nt" else "grade_engine")
@@ -30,7 +32,8 @@ def ensure_engine():
 
 
 def compute(records, engine):
-    text = "".join(f"{r['id']} {r['quiz']} {r['mid']} {r['exam']}\n" for r in records)
+    text = ''.join(('W ' + str(r['id']) + ' ' + str(len(r['marks'])) + ' ' + ' '.join(str(v) for triple in r['marks'] for v in triple) + '\n')
+                   if 'marks' in r else f"{r['id']} {r['quiz']} {r['mid']} {r['exam']}\n" for r in records)
     try:
         result = subprocess.run([str(engine)], input=text, text=True, capture_output=True, timeout=5)
     except subprocess.TimeoutExpired:
@@ -54,6 +57,12 @@ def parse_record(payload):
     if not isinstance(name, str) or not name.strip() or len(name.strip()) > 80:
         raise ValueError("Enter a student name of 1 to 80 characters.")
     record = {"id": positive_id(payload.get('id')), "name": name.strip()}
+    group = payload.get('group', '')
+    if not isinstance(group, str) or len(group) > 40:
+        raise ValueError('Class/group must be at most 40 characters.')
+    record['group'] = group.strip()
+    if not any(field in payload for field in ['quiz', 'mid', 'exam']):
+        return record
     for field, maximum in [('quiz', 20), ('mid', 30), ('exam', 50)]:
         raw = payload.get(field)
         if isinstance(raw, bool) or not isinstance(raw, (str, int, float)):
@@ -74,12 +83,13 @@ class GradeServer(LocalServer):
         self.engine = engine
 
     def snapshot(self, data):
-        calculated = compute(data['records'], self.engine)
-        return {**calculated, "records": [{**source, **result} for source, result in zip(data['records'], calculated['records'])],
-                "capacity": 30, "engine": "C++", "session_only": True}
+        return subject_snapshot(data, self.engine, compute)
 
     def action(self, path, payload, data):
-        records = list(data['records'])
+        ensure_data(data)
+        if path in {'/api/subject', '/api/subject/delete', '/api/marks'}:
+            return book_action(path, payload, data, positive_id, self.engine, compute)
+        records = deepcopy(data['records'])
         if path == '/api/student':
             record = parse_record(payload)
             original = payload.get('original_id', '')
@@ -98,7 +108,11 @@ class GradeServer(LocalServer):
             if index == len(records):
                 records.append(record)
             else:
+                record = {**records[index], **record}
                 records[index] = record
+            record.setdefault('scores', {})
+            if all(key in payload for key in ['quiz', 'mid', 'exam']):
+                record['scores']['general'] = {key: record[key] for key in ['quiz', 'mid', 'exam']}
             message = f"{record['name']}'s record is saved. Grades have been updated."
         elif path == '/api/delete':
             target = positive_id(payload.get('id'))
@@ -113,22 +127,28 @@ class GradeServer(LocalServer):
                        dict(id=102, name='Kojo Owusu', quiz=10, mid=10, exam=20),
                        dict(id=103, name='Esi Adjei', quiz=16, mid=22, exam=36)]
             message = "Sample class loaded. These are fictional demonstration records."
+            data['subjects'] = [default_subject()]
         else:
             raise ValueError("Unknown class action.")
-        compute(records, self.engine)  # Reject invalid data before committing the change.
+        candidate = {**data, 'records': records}
+        subject_snapshot(candidate, self.engine, compute)
         data['records'] = records
         return message
 
     def export(self, data):
         buffer = io.StringIO(newline='')
         writer = csv.writer(buffer)
-        writer.writerow(['ID', 'Name', 'Quiz /20', 'Mid-sem /30', 'Exam /50', 'Total /100', 'Grade', 'Remark'])
-        for record in self.snapshot(data)['records']:
-            name = record['name']
-            if name.startswith(('=', '+', '-', '@')):
-                name = "'" + name
-            writer.writerow([record['id'], name, record['quiz'], record['mid'], record['exam'],
-                             f"{record['total']:.1f}", record['grade'], record['remark']])
+        writer.writerow(['ID', 'Name', 'Subject', 'Assessments (raw/max; weight)', 'Total /100', 'Grade', 'Remark'])
+        snapshot = self.snapshot(data)
+        safe = lambda text: "'" + text if text.startswith(('=', '+', '-', '@')) else text
+        for subject in snapshot['subjects']:
+            results = {r['id']: r for r in snapshot['subject_results'][subject['id']]['records']}
+            for record in snapshot['students']:
+                result = results.get(record['id'])
+                marks = record['scores'].get(subject['id'], {})
+                breakdown = '; '.join(f"{p['name']}: {marks.get(p['id'], 'ungraded')}/{p['maximum']:g} ({p['weight']:g}%)" for p in subject['components'])
+                writer.writerow([record['id'], safe(record['name']), safe(subject['name']), safe(breakdown),
+                                 f"{result['total']:.1f}" if result else '', result['grade'] if result else '', result['remark'] if result else 'Ungraded'])
         return buffer.getvalue(), 'class-report.csv'
 
 
