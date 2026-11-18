@@ -36,7 +36,7 @@ T readNumber(const string& prompt, T minimum, T maximum) {
 }
 
 void inputStudents(string* names, int* ids, float* quiz,
-                   float* midSem, float* exam, int* count) {
+                   float* midSem, float* exam, float* attendance, int* count) {
     char addMore;
     *count = 0;
 
@@ -64,9 +64,10 @@ void inputStudents(string* names, int* ids, float* quiz,
             if (!duplicate) break;
             cout << "That student ID already exists. Use a unique ID.\n";
         }
-        quiz[idx] = readNumber<float>("Enter Quiz Score (0 - 20): ", 0, 20);
+        quiz[idx] = readNumber<float>("Enter Quiz Score (0 - 10): ", 0, 10);
         midSem[idx] = readNumber<float>("Enter Mid-Sem Score (0 - 30): ", 0, 30);
         exam[idx] = readNumber<float>("Enter Exam Score (0 - 50): ", 0, 50);
+        attendance[idx] = readNumber<float>("Enter Attendance Score (0 - 10): ", 0, 10); 
 
         (*count)++;
 
@@ -85,12 +86,12 @@ void inputStudents(string* names, int* ids, float* quiz,
     cout << "\n" << *count << " student record(s) entered successfully.\n";
 }
 
-void computeGrades(float* quiz, float* midSem, float* exam,
+void computeGrades(float* quiz, float* midSem, float* exam, float* attendance,
                    float* totals, char* grades, string* remarks,
                    int count) {
     // Use pointer arithmetic to traverse all arrays
     for (int i = 0; i < count; i++) {
-        *(totals + i) = assessmentTotal(*(quiz + i), *(midSem + i), *(exam + i));
+        *(totals + i) = assessmentTotal(*(quiz + i), *(midSem + i), *(exam + i), *(attendance + i));
         *(grades + i) = assignGrade(*(totals + i));
         *(remarks + i) = (*(grades + i) == 'F') ? "Fail" : "Pass";
     }
@@ -204,6 +205,7 @@ int run() {
     string names[MAX_STUDENTS];
     int    ids[MAX_STUDENTS];
     float  quiz[MAX_STUDENTS];
+    float  attendance[MAX_STUDENTS];
     float  midSem[MAX_STUDENTS];
     float  exam[MAX_STUDENTS];
     float  totals[MAX_STUDENTS];
@@ -226,7 +228,7 @@ int run() {
                     string confirm = readText("Replace all current records? (y/n): ");
                     if (confirm != "y" && confirm != "Y") break;
                 }
-                inputStudents(names, ids, quiz, midSem, exam,
+                inputStudents(names, ids, quiz, midSem, exam, attendance,
                               &studentCount);
                 gradesComputed = false;   // Reset flag on new input
                 break;
@@ -236,7 +238,7 @@ int run() {
                     cout << "\nNo records found. "
                          << "Please enter student records first.\n";
                 } else {
-                    computeGrades(quiz, midSem, exam, totals,
+                    computeGrades(quiz, midSem, exam, totals, attendance,
                                   grades, remarks, studentCount);
                     gradesComputed = true;
                 }
@@ -247,7 +249,7 @@ int run() {
                 if (studentCount > 0 && !gradesComputed) {
                     cout << "\nGrades not yet computed. "
                          << "Computing automatically...\n";
-                    computeGrades(quiz, midSem, exam, totals,
+                    computeGrades(quiz, midSem, exam, attendance, totals,
                                   grades, remarks, studentCount);
                     gradesComputed = true;
                 }
@@ -259,7 +261,7 @@ int run() {
                 if (studentCount > 0 && !gradesComputed) {
                     cout << "\nGrades not yet computed. "
                          << "Computing automatically...\n";
-                    computeGrades(quiz, midSem, exam, totals,
+                    computeGrades(quiz, midSem, exam, attendance, totals,
                                   grades, remarks, studentCount);
                     gradesComputed = true;
                 }
@@ -275,7 +277,7 @@ int run() {
                 if (!gradesComputed) {
                     cout << "\nGrades not yet computed. "
                          << "Computing automatically...\n";
-                    computeGrades(quiz, midSem, exam, totals,
+                    computeGrades(quiz, midSem, exam, attendance, totals,
                                   grades, remarks, studentCount);
                     gradesComputed = true;
                 }
@@ -292,7 +294,8 @@ int run() {
                     cout << "Name     : " << names[idx]  << "\n";
                     cout << "ID       : " << ids[idx]    << "\n";
                     cout << fixed << setprecision(1);
-                    cout << "Quiz     : " << quiz[idx]   << " / 20\n";
+                    cout << "Quiz     : " << quiz[idx]   << " / 10\n";
+                    cout << "Attendance  : " << attendance[idx] << " / 10\n";
                     cout << "Mid-Sem  : " << midSem[idx] << " / 30\n";
                     cout << "Exam     : " << exam[idx]   << " / 50\n";
                     cout << "Total    : " << totals[idx] << " / 100\n";

@@ -8,7 +8,7 @@
 #include <cmath>
 #include "grade_rules.h"
 
-struct ScoreRow { int id; double quiz, mid, exam, total; char grade; };
+struct ScoreRow { int id; double quiz, mid, exam, att, total; char grade; };
 
 int main() {
     std::vector<ScoreRow> rows;
@@ -43,7 +43,7 @@ int main() {
             std::cerr << "Invalid assessment record.\n";
             return 1;
         }
-        if (!weighted) row.total = assessmentTotal(row.quiz, row.mid, row.exam);
+        if (!weighted) row.total = assessmentTotal(row.quiz, row.mid, row.exam, row.att);
         row.grade = assignGrade(row.total);
         rows.push_back(row);
     }

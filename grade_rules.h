@@ -15,8 +15,8 @@ inline char assignGrade(double total) {
     return 'F';
 }
 
-inline float assessmentTotal(float quiz, float midSem, float exam) {
-    return quiz + midSem + exam;
+inline float assessmentTotal(float quiz, float midSem, float exam, float attendance) {
+    return quiz + midSem + exam + attendance;
 }
 
 #endif
