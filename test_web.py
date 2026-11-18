@@ -52,8 +52,10 @@ class GradeWebTests(unittest.TestCase):
         status, _, result = self.request('/api/sample', {}, cookie)
         self.assertEqual(status, 200)
         state = result['state']
-        self.assertEqual([r['grade'] for r in state['records']], ['A', 'F', 'B'])
-        self.assertAlmostEqual(state['average'], 199/3, places=4)
+        self.assertEqual([r['grade'] for r in state['records']], ['A', 'F', 'B+'])
+        self.assertAlmostEqual(state['average'], 66, places=4)
+        self.assertEqual([p['maximum'] for p in state['subjects'][0]['components']], [10, 30, 50, 10])
+        self.assertEqual(state['grading_scale'][1], {'grade': 'A-', 'minimum': 75})
         self.assertEqual((state['passed'], state['failed']), (2, 1))
         self.assertEqual((state['highest_id'], state['lowest_id']), (101, 102))
         status, headers, text = self.request('/api/export', cookie=cookie)
@@ -64,13 +66,13 @@ class GradeWebTests(unittest.TestCase):
 
     def test_add_edit_delete_and_invalid_input(self):
         cookie = self.session()
-        record = dict(id='42', name='Test Student', quiz='20', mid='30', exam='50')
+        record = dict(id='42', name='Test Student', quiz='10', mid='30', exam='50', attendance='10')
         self.assertEqual(self.request('/api/student', record, cookie)[2]['state']['records'][0]['grade'], 'A')
         self.assertEqual(self.request('/api/student', record, cookie)[0], 400)
-        for field, value in [('quiz','nan'), ('mid','31'), ('exam','words'), ('id','1.5'), ('name','')]:
+        for field, value in [('quiz','nan'), ('quiz','11'), ('mid','31'), ('exam','words'), ('attendance','11'), ('attendance','-1'), ('attendance',True), ('id','1.5'), ('name','')]:
             self.assertEqual(self.request('/api/student', {**record, field:value}, cookie)[0], 400)
         edited = {**record, 'original_id':'42', 'exam':'0'}
-        self.assertEqual(self.request('/api/student', edited, cookie)[2]['state']['records'][0]['grade'], 'D')
+        self.assertEqual(self.request('/api/student', edited, cookie)[2]['state']['records'][0]['grade'], 'C')
         self.assertEqual(self.request('/api/delete', {'id':'42'}, cookie)[2]['state']['records'], [])
 
     def test_sessions_and_replacement_confirmation(self):
@@ -84,17 +86,53 @@ class GradeWebTests(unittest.TestCase):
     def test_capacity_is_enforced_before_mutation(self):
         data = {'records': []}
         for index in range(1,31):
-            self.server.action('/api/student', dict(id=str(index),name=f'Student {index}',quiz='0',mid='0',exam='0'), data)
+            self.server.action('/api/student', dict(id=str(index),name=f'Student {index}',quiz='0',mid='0',exam='0',attendance='0'), data)
         with self.assertRaises(ValueError):
-            self.server.action('/api/student',dict(id='31',name='Extra',quiz='0',mid='0',exam='0'),data)
+            self.server.action('/api/student',dict(id='31',name='Extra',quiz='0',mid='0',exam='0',attendance='0'),data)
         self.assertEqual(len(data['records']),30)
 
     def test_engine_rejects_invalid_protocol_and_uses_grade_boundaries(self):
         result = subprocess.run([str(self.engine)], input='1 20 30 30\n2 20 30 0\n3 0 0 49\n',text=True,capture_output=True,timeout=5)
         self.assertEqual(result.returncode,0)
-        self.assertEqual([r['grade'] for r in json.loads(result.stdout)['records']],['A','D','F'])
+        self.assertEqual([r['grade'] for r in json.loads(result.stdout)['records']],['A','C','C-'])
         for text in ['1 21 0 0\n','1 nan 0 0\n','1 0 0 0\n1 0 0 0\n','1 0 0 0 trailing\n']:
             self.assertNotEqual(subprocess.run([str(self.engine)],input=text,text=True,capture_output=True,timeout=5).returncode,0)
+
+    def test_attendance_protocol_and_rejected_inputs(self):
+        text='1 10 30 50 10\n2 9.5 25 40 5\n'
+        result=subprocess.run([str(self.engine)],input=text,text=True,capture_output=True,timeout=5,check=True)
+        rows=json.loads(result.stdout)['records']
+        self.assertEqual([(r['total'],r['grade']) for r in rows],[(100,'A'),(79.5,'A-')])
+        for text in ['1 11 0 0 0\n','1 0 0 0 11\n','1 0 0 0 -1\n','1 0 0 0 nan\n','1 0 0 0 inf\n','1 0 0 0 1 extra\n']:
+            with self.subTest(text=text):
+                self.assertNotEqual(subprocess.run([str(self.engine)],input=text,text=True,capture_output=True,timeout=5).returncode,0)
+
+    def test_flat_assessments_require_attendance_before_mutation(self):
+        data={'records':[]}
+        self.server.action('/api/student',dict(id=1,name='Learner'),data)
+        from copy import deepcopy
+        before=deepcopy(data)
+        with self.assertRaises(ValueError):
+            self.server.action('/api/student',dict(original_id=1,id=1,name='Learner',quiz=10,mid=30,exam=50),data)
+        self.assertEqual(data,before)
+
+    def test_csv_preserves_fractional_totals_and_plus_minus(self):
+        data={'records':[]}
+        self.server.action('/api/student',dict(id=1,name='Learner',quiz=10,mid=30,exam=39.9999,attendance=0),data)
+        text,_=self.server.export(data)
+        self.assertIn('79.9999,A-,Pass',text)
+        self.assertIn('Attendance: 0.0/10 (10%)',text)
+
+    def test_sample_replacement_is_atomic_on_engine_failure(self):
+        from copy import deepcopy
+        from unittest.mock import patch
+        data={'records':[]}
+        self.server.action('/api/student',dict(id=1,name='Learner'),data)
+        self.server.action('/api/subject',dict(name='Custom',code='CUSTOM',components=[dict(name='Project',maximum=100,weight=100)]),data)
+        before=deepcopy(data)
+        with patch('web.compute',side_effect=ValueError('Engine rejected input')):
+            with self.assertRaises(ValueError):self.server.action('/api/sample',{'replace':True},data)
+        self.assertEqual(data,before)
 
 
 if __name__ == '__main__':

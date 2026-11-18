@@ -1,22 +1,42 @@
 #ifndef GRADE_RULES_H
 #define GRADE_RULES_H
 
-// Shared by the original terminal app and the browser interface's C++ engine.
-inline char assignGrade(double total) {
-    if (total >= 80) return 'A';
-    if (total >= 75 && total <= 79) return 'A-';
-    if (total >= 70 && total <= 74) return 'B+';
-    if (total >= 65 && total <= 69) return 'B';
-    if (total >= 60 && total <= 64) return 'B-';
-    if (total >= 55 && total <= 59) return 'C+';
-    if (total >= 50 && total <= 54) return 'C';
-    if (total >= 45 && total <= 49) return 'C-';
-    if (total >= 40 && total <= 44) return 'D';
-    return 'F';
+#include <array>
+#include <cmath>
+#include <iomanip>
+#include <sstream>
+#include <string>
+
+// One scale drives the terminal, engine results and browser distribution labels.
+struct GradeBand { double minimum; const char* grade; };
+inline const std::array<GradeBand, 10>& gradeScale() {
+    static const std::array<GradeBand, 10> scale = {{{80,"A"}, {75,"A-"},
+        {70,"B+"}, {65,"B"}, {60,"B-"}, {55,"C+"}, {50,"C"},
+        {45,"C-"}, {40,"D"}, {0,"F"}}};
+    return scale;
 }
 
-inline float assessmentTotal(float quiz, float midSem, float exam, float attendance) {
-    return quiz + midSem + exam + attendance;
+inline std::string assignGrade(double total) {
+    for (const GradeBand& band : gradeScale())
+        if (total >= band.minimum) return band.grade;
+    return "F";
+}
+
+inline double normalizeTotal(double total) {
+    return std::round(total * 100000000.0) / 100000000.0;
+}
+
+inline double assessmentTotal(double quiz, double midSem, double exam, double attendance) {
+    return normalizeTotal(quiz + midSem + exam + attendance);
+}
+
+inline std::string formatScore(double score) {
+    std::ostringstream text;
+    text << std::fixed << std::setprecision(8) << score;
+    std::string value = text.str();
+    while (value.back() == '0') value.pop_back();
+    if (value.back() == '.') value += '0';
+    return value;
 }
 
 #endif

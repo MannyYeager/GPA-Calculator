@@ -35,9 +35,9 @@ T readNumber(const string& prompt, T minimum, T maximum) {
     }
 }
 
-void inputStudents(string* names, int* ids, float* quiz,
-                   float* midSem, float* exam, float* attendance, int* count) {
-    char addMore;
+void inputStudents(string* names, int* ids, double* quiz,
+                   double* midSem, double* exam, double* attendance, int* count) {
+    char addMore = 'n';
     *count = 0;
 
     cout << "\n==========================================\n";
@@ -64,10 +64,10 @@ void inputStudents(string* names, int* ids, float* quiz,
             if (!duplicate) break;
             cout << "That student ID already exists. Use a unique ID.\n";
         }
-        quiz[idx] = readNumber<float>("Enter Quiz Score (0 - 10): ", 0, 10);
-        midSem[idx] = readNumber<float>("Enter Mid-Sem Score (0 - 30): ", 0, 30);
-        exam[idx] = readNumber<float>("Enter Exam Score (0 - 50): ", 0, 50);
-        attendance[idx] = readNumber<float>("Enter Attendance Score (0 - 10): ", 0, 10); 
+        quiz[idx] = readNumber<double>("Enter Quiz Score (0 - 10): ", 0, 10);
+        midSem[idx] = readNumber<double>("Enter Mid-Sem Score (0 - 30): ", 0, 30);
+        exam[idx] = readNumber<double>("Enter Exam Score (0 - 50): ", 0, 50);
+        attendance[idx] = readNumber<double>("Enter Attendance Score (0 - 10): ", 0, 10);
 
         (*count)++;
 
@@ -86,20 +86,20 @@ void inputStudents(string* names, int* ids, float* quiz,
     cout << "\n" << *count << " student record(s) entered successfully.\n";
 }
 
-void computeGrades(float* quiz, float* midSem, float* exam, float* attendance,
-                   float* totals, char* grades, string* remarks,
+void computeGrades(double* quiz, double* midSem, double* exam, double* attendance,
+                   double* totals, string* grades, string* remarks,
                    int count) {
     // Use pointer arithmetic to traverse all arrays
     for (int i = 0; i < count; i++) {
         *(totals + i) = assessmentTotal(*(quiz + i), *(midSem + i), *(exam + i), *(attendance + i));
         *(grades + i) = assignGrade(*(totals + i));
-        *(remarks + i) = (*(grades + i) == 'F') ? "Fail" : "Pass";
+        *(remarks + i) = (*(grades + i) == "F") ? "Fail" : "Pass";
     }
     cout << "\nGrades computed and assigned successfully!\n";
 }
 
-void displayReport(string* names, int* ids, float* totals,
-                   char* grades, string* remarks, int count) {
+void displayReport(string* names, int* ids, double* totals,
+                   string* grades, string* remarks, int count) {
     if (count == 0) {
         cout << "\nNo student records found. "
              << "Please enter records first.\n";
@@ -112,7 +112,7 @@ void displayReport(string* names, int* ids, float* totals,
     cout << left
          << setw(10) << "ID"
          << setw(22) << "NAME"
-         << setw(8)  << "TOTAL"
+         << setw(14) << "TOTAL"
          << setw(7)  << "GRADE"
          << setw(7)  << "REMARK"
          << "\n";
@@ -123,7 +123,7 @@ void displayReport(string* names, int* ids, float* totals,
         cout << left
              << setw(10) << *(ids     + i)
              << setw(22) << (names[i].size() > 20 ? names[i].substr(0, 17) + "..." : names[i])
-             << setw(8)  << fixed << setprecision(1) << *(totals + i)
+             << setw(14) << formatScore(*(totals + i))
              << setw(7)  << *(grades  + i)
              << setw(7)  << *(remarks + i)
              << "\n";
@@ -131,7 +131,7 @@ void displayReport(string* names, int* ids, float* totals,
     cout << "==========================================\n";
 }
 
-void findHighestLowest(float* totals, int count,
+void findHighestLowest(double* totals, int count,
                        int* highIdx, int* lowIdx) {
     *highIdx = 0;
     *lowIdx  = 0;
@@ -141,8 +141,8 @@ void findHighestLowest(float* totals, int count,
     }
 }
 
-void displayStatistics(string* names, float* totals,
-                       char* grades, int count) {
+void displayStatistics(string* names, double* totals,
+                       string* grades, int count) {
     if (count == 0) {
         cout << "\nNo records available. "
              << "Please enter student records first.\n";
@@ -153,24 +153,24 @@ void displayStatistics(string* names, float* totals,
     int highIdx, lowIdx;
     findHighestLowest(totals, count, &highIdx, &lowIdx);
 
-    float sum      = 0;
+    double sum      = 0;
     int   passCount = 0;
     int   failCount = 0;
 
     for (int i = 0; i < count; i++) {
         sum += totals[i];
-        if (grades[i] != 'F') passCount++;
+        if (grades[i] != "F") passCount++;
         else                   failCount++;
     }
-    float average = sum / count;
+    double average = sum / count;
 
     cout << "\n==========================================\n";
     cout << "           CLASS STATISTICS\n";
     cout << "------------------------------------------\n";
     cout << "  Highest Score  : " << fixed << setprecision(1)
-         << totals[highIdx] << "  (" << names[highIdx] << ")\n";
+         << formatScore(totals[highIdx]) << "  (" << names[highIdx] << ")\n";
     cout << "  Lowest Score   : " << fixed << setprecision(1)
-         << totals[lowIdx]  << "  (" << names[lowIdx]  << ")\n";
+         << formatScore(totals[lowIdx])  << "  (" << names[lowIdx]  << ")\n";
     cout << "  Class Average  : " << fixed << setprecision(1)
          << average << "\n";
     cout << "  Students Passed: " << passCount
@@ -203,13 +203,13 @@ void displayMenu() {
 int run() {
     // --- Parallel arrays for student data ---
     string names[MAX_STUDENTS];
-    int    ids[MAX_STUDENTS];
-    float  quiz[MAX_STUDENTS];
-    float  attendance[MAX_STUDENTS];
-    float  midSem[MAX_STUDENTS];
-    float  exam[MAX_STUDENTS];
-    float  totals[MAX_STUDENTS];
-    char   grades[MAX_STUDENTS];
+    int    ids[MAX_STUDENTS] = {};
+    double quiz[MAX_STUDENTS] = {};
+    double attendance[MAX_STUDENTS] = {};
+    double midSem[MAX_STUDENTS] = {};
+    double exam[MAX_STUDENTS] = {};
+    double totals[MAX_STUDENTS] = {};
+    string grades[MAX_STUDENTS];
     string remarks[MAX_STUDENTS];
 
     int  studentCount   = 0;   // Initialised before the input loop
@@ -238,7 +238,7 @@ int run() {
                     cout << "\nNo records found. "
                          << "Please enter student records first.\n";
                 } else {
-                    computeGrades(quiz, midSem, exam, totals, attendance,
+                    computeGrades(quiz, midSem, exam, attendance, totals,
                                   grades, remarks, studentCount);
                     gradesComputed = true;
                 }
@@ -294,11 +294,11 @@ int run() {
                     cout << "Name     : " << names[idx]  << "\n";
                     cout << "ID       : " << ids[idx]    << "\n";
                     cout << fixed << setprecision(1);
-                    cout << "Quiz     : " << quiz[idx]   << " / 10\n";
-                    cout << "Attendance  : " << attendance[idx] << " / 10\n";
-                    cout << "Mid-Sem  : " << midSem[idx] << " / 30\n";
-                    cout << "Exam     : " << exam[idx]   << " / 50\n";
-                    cout << "Total    : " << totals[idx] << " / 100\n";
+                    cout << "Quiz     : " << formatScore(quiz[idx])   << " / 10\n";
+                    cout << "Attendance  : " << formatScore(attendance[idx]) << " / 10\n";
+                    cout << "Mid-Sem  : " << formatScore(midSem[idx]) << " / 30\n";
+                    cout << "Exam     : " << formatScore(exam[idx])   << " / 50\n";
+                    cout << "Total    : " << formatScore(totals[idx]) << " / 100\n";
                     cout << "Grade    : " << grades[idx] << "\n";
                     cout << "Remark   : " << remarks[idx] << "\n";
                 }

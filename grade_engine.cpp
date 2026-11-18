@@ -8,7 +8,7 @@
 #include <cmath>
 #include "grade_rules.h"
 
-struct ScoreRow { int id; double quiz, mid, exam, att, total; char grade; };
+struct ScoreRow { int id = 0; double quiz = 0, mid = 0, exam = 0, att = 0, total = 0; std::string grade; };
 
 int main() {
     std::vector<ScoreRow> rows;
@@ -33,38 +33,54 @@ int main() {
             }
             if (std::abs(weights - 100) > 0.000001) return 1;
             // Remove arithmetic noise at grade boundaries, without rounding to display precision.
-            row.total = std::round(total * 100000000.0) / 100000000.0;
-        } else if (!(input >> row.id >> row.quiz >> row.mid >> row.exam)) return 1;
+            row.total = normalizeTotal(total);
+        } else {
+            if (!(input >> row.id >> row.quiz >> row.mid >> row.exam)) return 1;
+            // Four numeric fields retain the original /20+/30+/50 protocol.
+            // Five fields use /10+/30+/50 plus explicitly supplied attendance /10.
+            input >> std::ws;
+            const bool attendanceRow = !input.eof();
+            if (attendanceRow && !(input >> row.att)) return 1;
+            if (!std::isfinite(row.quiz) || !std::isfinite(row.mid) || !std::isfinite(row.exam)
+                || !std::isfinite(row.att) || row.quiz < 0 || row.quiz > (attendanceRow ? 10 : 20)
+                || row.mid < 0 || row.mid > 30 || row.exam < 0 || row.exam > 50
+                || row.att < 0 || row.att > 10) return 1;
+            row.total = assessmentTotal(row.quiz, row.mid, row.exam, row.att);
+        }
         if (rows.size() >= 30
             || (input >> extra) || row.id <= 0 || !ids.insert(row.id).second
-            || (!weighted && (!std::isfinite(row.quiz) || !std::isfinite(row.mid) || !std::isfinite(row.exam)
-            || row.quiz < 0 || row.quiz > 20 || row.mid < 0 || row.mid > 30
-            || row.exam < 0 || row.exam > 50))) {
+            || !std::isfinite(row.total) || row.total < 0 || row.total > 100) {
             std::cerr << "Invalid assessment record.\n";
             return 1;
         }
-        if (!weighted) row.total = assessmentTotal(row.quiz, row.mid, row.exam, row.att);
         row.grade = assignGrade(row.total);
         rows.push_back(row);
     }
     double sum = 0;
     int passed = 0;
     std::size_t high = 0, low = 0;
-    std::cout << std::setprecision(9) << "{\"records\":[";
+    std::cout << std::setprecision(12) << "{\"records\":[";
     for (std::size_t i = 0; i < rows.size(); ++i) {
         const ScoreRow& row = rows[i];
         sum += row.total;
-        if (row.grade != 'F') ++passed;
+        if (row.grade != "F") ++passed;
         if (row.total > rows[high].total) high = i;
         if (row.total < rows[low].total) low = i;
         if (i) std::cout << ',';
         std::cout << "{\"id\":" << row.id << ",\"total\":" << row.total
                   << ",\"grade\":\"" << row.grade << "\",\"remark\":\""
-                  << (row.grade == 'F' ? "Fail" : "Pass") << "\"}";
+                  << (row.grade == "F" ? "Fail" : "Pass") << "\"}";
     }
     std::cout << "],\"average\":" << (rows.empty() ? 0 : sum / rows.size())
               << ",\"passed\":" << passed << ",\"failed\":" << rows.size() - passed
               << ",\"highest_id\":" << (rows.empty() ? 0 : rows[high].id)
-              << ",\"lowest_id\":" << (rows.empty() ? 0 : rows[low].id) << "}\n";
+              << ",\"lowest_id\":" << (rows.empty() ? 0 : rows[low].id) << ",\"grading_scale\":[";
+    bool first = true;
+    for (const GradeBand& band : gradeScale()) {
+        if (!first) std::cout << ',';
+        first = false;
+        std::cout << "{\"grade\":\"" << band.grade << "\",\"minimum\":" << band.minimum << '}';
+    }
+    std::cout << "]}\n";
     return 0;
 }

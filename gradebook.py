@@ -8,14 +8,14 @@ import secrets
 def default_subject():
     return {'id': 'general', 'name': 'General assessment', 'code': 'GEN', 'components': [
         {'id': key, 'name': label, 'maximum': maximum, 'weight': maximum}
-        for key, label, maximum in [('quiz', 'Quiz', 20), ('mid', 'Mid-semester', 30), ('exam', 'Exam', 50)]]}
+        for key, label, maximum in [('quiz', 'Quiz', 10), ('mid', 'Mid-semester', 30), ('exam', 'Exam', 50), ('attendance', 'Attendance', 10)]]}
 
 
 def ensure_data(data):
     data.setdefault('subjects', [default_subject()])
     for record in data['records']:
         if 'scores' not in record:
-            record['scores'] = {'general': {key: record[key] for key in ['quiz', 'mid', 'exam']}} if all(key in record for key in ['quiz', 'mid', 'exam']) else {}
+            record['scores'] = {'general': {key: record[key] for key in ['quiz', 'mid', 'exam', 'attendance'] if key in record}} if all(key in record for key in ['quiz', 'mid', 'exam']) else {}
         record.setdefault('group', '')
 
 
@@ -43,6 +43,8 @@ def validate_subject(payload, existing=None):
         if not isinstance(key, str) or len(key) > 40 or key in ids:
             raise ValueError('Each assessment component needs a unique ID.')
         ids.add(key)
+        if float(maximum) <= 0 or float(weight) <= 0:
+            raise ValueError('Maximum marks and weights are too small to represent. Use larger positive values.')
         components.append({'id': key, 'name': label.strip(), 'maximum': float(maximum), 'weight': float(weight)})
         total += weight
     if total != 100:
@@ -121,7 +123,7 @@ def book_action(path, payload, data, positive_id, engine, compute):
                 raise ValueError('Marks must be numeric.')
             try:
                 value = float(value)
-            except ValueError:
+            except (ValueError, OverflowError):
                 raise ValueError('Marks must be numeric.') from None
             if not math.isfinite(value) or not 0 <= value <= part['maximum']:
                 raise ValueError(f"{part['name']} must be from 0 to {part['maximum']:g}.")

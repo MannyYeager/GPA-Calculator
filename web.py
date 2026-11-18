@@ -33,7 +33,7 @@ def ensure_engine():
 
 def compute(records, engine):
     text = ''.join(('W ' + str(r['id']) + ' ' + str(len(r['marks'])) + ' ' + ' '.join(str(v) for triple in r['marks'] for v in triple) + '\n')
-                   if 'marks' in r else f"{r['id']} {r['quiz']} {r['mid']} {r['exam']}\n" for r in records)
+                   if 'marks' in r else f"{r['id']} {r['quiz']} {r['mid']} {r['exam']}" + (f" {r['attendance']}" if 'attendance' in r else '') + '\n' for r in records)
     try:
         result = subprocess.run([str(engine)], input=text, text=True, capture_output=True, timeout=5)
     except subprocess.TimeoutExpired:
@@ -52,6 +52,11 @@ def positive_id(value):
     return value
 
 
+def format_total(value):
+    text = f'{value:.8f}'.rstrip('0')
+    return text + '0' if text.endswith('.') else text
+
+
 def parse_record(payload):
     name = payload.get('name', '')
     if not isinstance(name, str) or not name.strip() or len(name.strip()) > 80:
@@ -61,15 +66,15 @@ def parse_record(payload):
     if not isinstance(group, str) or len(group) > 40:
         raise ValueError('Class/group must be at most 40 characters.')
     record['group'] = group.strip()
-    if not any(field in payload for field in ['quiz', 'mid', 'exam']):
+    if not any(field in payload for field in ['quiz', 'mid', 'exam', 'attendance']):
         return record
-    for field, maximum in [('quiz', 20), ('mid', 30), ('exam', 50)]:
+    for field, maximum in [('quiz', 10), ('mid', 30), ('exam', 50), ('attendance', 10)]:
         raw = payload.get(field)
         if isinstance(raw, bool) or not isinstance(raw, (str, int, float)):
             raise ValueError(f"Enter a numeric {field} score.")
         try:
             score = float(raw)
-        except ValueError:
+        except (ValueError, OverflowError):
             raise ValueError(f"Enter a numeric {field} score.") from None
         if not math.isfinite(score) or not 0 <= score <= maximum:
             raise ValueError(f"{field.capitalize()} score must be from 0 to {maximum}.")
@@ -111,8 +116,8 @@ class GradeServer(LocalServer):
                 record = {**records[index], **record}
                 records[index] = record
             record.setdefault('scores', {})
-            if all(key in payload for key in ['quiz', 'mid', 'exam']):
-                record['scores']['general'] = {key: record[key] for key in ['quiz', 'mid', 'exam']}
+            if all(key in payload for key in ['quiz', 'mid', 'exam', 'attendance']):
+                record['scores']['general'] = {key: record[key] for key in ['quiz', 'mid', 'exam', 'attendance']}
             message = f"{record['name']}'s record is saved. Grades have been updated."
         elif path == '/api/delete':
             target = positive_id(payload.get('id'))
@@ -123,16 +128,17 @@ class GradeServer(LocalServer):
         elif path == '/api/sample':
             if records and payload.get('replace') is not True:
                 raise ValueError("Confirm replacement before loading the sample class.")
-            records = [dict(id=101, name='Ama Mensah', quiz=18, mid=25, exam=42),
-                       dict(id=102, name='Kojo Owusu', quiz=10, mid=10, exam=20),
-                       dict(id=103, name='Esi Adjei', quiz=16, mid=22, exam=36)]
+            records = [dict(id=101, name='Ama Mensah', quiz=8, mid=25, exam=42, attendance=10),
+                       dict(id=102, name='Kojo Owusu', quiz=4, mid=10, exam=20, attendance=5),
+                       dict(id=103, name='Esi Adjei', quiz=8, mid=22, exam=36, attendance=8)]
             message = "Sample class loaded. These are fictional demonstration records."
-            data['subjects'] = [default_subject()]
         else:
             raise ValueError("Unknown class action.")
         candidate = {**data, 'records': records}
+        if path == '/api/sample':
+            candidate['subjects'] = [default_subject()]
         subject_snapshot(candidate, self.engine, compute)
-        data['records'] = records
+        data.update(candidate)
         return message
 
     def export(self, data):
@@ -148,7 +154,7 @@ class GradeServer(LocalServer):
                 marks = record['scores'].get(subject['id'], {})
                 breakdown = '; '.join(f"{p['name']}: {marks.get(p['id'], 'ungraded')}/{p['maximum']:g} ({p['weight']:g}%)" for p in subject['components'])
                 writer.writerow([record['id'], safe(record['name']), safe(subject['name']), safe(breakdown),
-                                 f"{result['total']:.1f}" if result else '', result['grade'] if result else '', result['remark'] if result else 'Ungraded'])
+                                 format_total(result['total']) if result else '', result['grade'] if result else '', result['remark'] if result else 'Ungraded'])
         return buffer.getvalue(), 'class-report.csv'
 
 
